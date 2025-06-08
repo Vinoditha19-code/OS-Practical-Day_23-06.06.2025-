@@ -1,0 +1,101 @@
+/*Exersice_02
+
+step_01: 
+parent process : get input from user
+
+step_02
+send those inputs to child process
+
+step_03
+child process getting those inputs 
+from parent are doing calculations
+01. rectangle
+02. square
+03. triangle
+02. Circle
+
+step_04
+send the calculated values to parents
+
+step_05
+parent prints the output
+
+*/
+
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+
+void calculateAreas(float data[]) {
+    data[0] = data[0] * data[1]; // Rectangle: length * width
+    data[1] = data[2] * data[2]; // Square: side * side
+    data[2] = 0.5 * data[3] * data[4]; // Triangle: 0.5 * base * height
+    data[3] = 3.14159 * data[5] * data[5]; // Circle: π * radius²
+}
+
+int main() {
+    int pipe1[2], pipe2[2]; // Two pipes: one for sending data, one for receiving results
+    pid_t pid;
+
+    if (pipe(pipe1) == -1 || pipe(pipe2) == -1) {
+        perror("Pipe creation failed");
+        return 1;
+    }
+
+    pid = fork();
+    
+    if (pid < 0) {
+        perror("Fork failed");
+        return 1;
+    }
+
+    if (pid > 0) { 
+        // Parent process
+        close(pipe1[0]); // Close read end of first pipe
+        close(pipe2[1]); // Close write end of second pipe
+
+        float data[6];
+        printf("Enter length and width of rectangle: ");
+        scanf("%f %f", &data[0], &data[1]);
+
+        printf("Enter side of square: ");
+        scanf("%f", &data[2]);
+
+        printf("Enter base and height of triangle: ");
+        scanf("%f %f", &data[3], &data[4]);
+
+        printf("Enter radius of circle: ");
+        scanf("%f", &data[5]);
+
+        write(pipe1[1], data, sizeof(data));
+        close(pipe1[1]); // Close write end after writing
+
+        wait(NULL); // Wait for child process
+
+        read(pipe2[0], data, sizeof(data));
+        close(pipe2[0]); // Close read end after reading
+
+        printf("Calculated Areas:\n");
+        printf("Rectangle: %.2f\n", data[0]);
+        printf("Square: %.2f\n", data[1]);
+        printf("Triangle: %.2f\n", data[2]);
+        printf("Circle: %.2f\n", data[3]);
+    } else { 
+        // Child process
+        close(pipe1[1]); // Close write end of first pipe
+        close(pipe2[0]); // Close read end of second pipe
+
+        float data[6];
+        read(pipe1[0], data, sizeof(data));
+        close(pipe1[0]); // Close read end after reading
+
+        calculateAreas(data);
+
+        write(pipe2[1], data, sizeof(data));
+        close(pipe2[1]); // Close write end after writing
+
+        exit(0);
+    }
+
+    return 0;
+}
